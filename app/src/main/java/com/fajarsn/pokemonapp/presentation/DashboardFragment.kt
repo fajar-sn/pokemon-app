@@ -5,13 +5,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.fajarsn.pokemonapp.data.Pokemon
+import com.fajarsn.pokemonapp.data.PokemonResponse
 import com.fajarsn.pokemonapp.databinding.FragmentDashboardBinding
+import com.fajarsn.pokemonapp.utils.DataMapper
 
 class DashboardFragment : Fragment() {
     private var _binding: FragmentDashboardBinding? = null
     private val binding get() = _binding!!
+    private lateinit var recyclerView: RecyclerView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -23,27 +28,38 @@ class DashboardFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val recyclerView = binding.pokemonListRecyclerView
+        recyclerView = binding.pokemonListRecyclerView
         recyclerView.setHasFixedSize(true)
-        val pokemonList = mutableListOf<Pokemon>()
+        recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
+        val mainViewModel = ViewModelProvider(requireActivity(), ViewModelProvider.NewInstanceFactory())[MainViewModel::class.java]
+        val pokemonResponseList = mutableListOf<PokemonResponse>()
 
-        for (i in 0..14) {
-            val pokemon =
-                Pokemon(
-                    imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png",
-                    name = "Dinosaurus",
-                    id = 1
-                )
+        mainViewModel.pokemonListResponse.observe(requireActivity()) { response ->
+            response.results.forEach { item ->
+                mainViewModel.getPokemonDetail(item.name)
+            }
 
-            pokemonList.add(pokemon)
+            val pokemonList = DataMapper.mapEntitiesToDomain(pokemonResponseList)
+            recyclerView.adapter = PokemonListAdapter(pokemonList)
         }
 
-        recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
-        recyclerView.adapter = PokemonListAdapter(pokemonList)
+        mainViewModel.pokemonResponse.observe(requireActivity()) { response ->
+            pokemonResponseList.add(response)
+        }
+
+        mainViewModel.isLoading.observe(requireActivity()) {
+            binding.progressBar.visibility = if (it) View.VISIBLE else View.GONE
+        }
+
+
+//        getPokemonList()
+//        recyclerView.adapter = PokemonListAdapter(pokemonList)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
     }
+
+
 }
